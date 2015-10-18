@@ -423,10 +423,8 @@ void OnboardDisplay::LcdPrint_P(int y,PGM_P s)
 
 void OnboardDisplay::LcdPrint_P(int x,int y,PGM_P s)
 {
-  strncpy_P(m_strBuf,s,LCD_MAX_CHARS_PER_LINE);
-  m_strBuf[LCD_MAX_CHARS_PER_LINE] = 0;
   m_Lcd.setCursor(x,y);
-  m_Lcd.print(m_strBuf);
+  LcdPrint_P(s);
 }
 
 void OnboardDisplay::LcdMsg_P(PGM_P l1,PGM_P l2)

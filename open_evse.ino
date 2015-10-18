@@ -7,6 +7,7 @@
  * timer code Copyright (c) 2013 Kevin L <goldserve1@hotmail.com>
  * portions Copyright (c) 2014-2015 Nick Sayer <nsayer@kfu.com>
  * portions Copyright (c) 2015 Craig Kirkpatrick
+ * portions Copyright (c) 2015 wmcbrine
 
  Revised  Ver	By		Reason
  6/21/13  20b3	Scott Rubin	fixed LCD display bugs with RTC enabled
@@ -47,7 +48,7 @@
 #include "./RTClib.h"
 #include "open_evse.h"
 // if using I2CLCD_PCF8574 uncomment below line  and comment out LiquidTWI2.h above
-//#include <LiquidCrystal_I2C.h>
+//#include "./LiquidCrystal_I2C.h"
 #ifdef TEMPERATURE_MONITORING
   #ifdef MCP9808_IS_ON_I2C
   #include "./Adafruit_MCP9808.h"  //  adding the ambient temp sensor to I2C
@@ -346,7 +347,7 @@ const char CustomChar_2[8] PROGMEM = {0x0,0x8,0xc,0xe,0xc,0x8,0x0,0x0}; // play
 const char CustomChar_3[8] PROGMEM = {0x0,0xe,0xc,0x1f,0x3,0x6,0xc,0x8}; // lightning
 #endif
 
-void OnboardDisplay::MakeChar_P(uint8_t n, const char PROGMEM *bytes)
+void OnboardDisplay::MakeChar(uint8_t n, PGM_P bytes)
 {
   memcpy_P(g_sTmp, bytes, 8);
   m_Lcd.createChar(n, (uint8_t*)g_sTmp);
@@ -376,14 +377,14 @@ void OnboardDisplay::Init()
   LcdSetBacklightColor(WHITE);
 
 #if defined(DELAYTIMER)||defined(TIME_LIMIT)
-  MakeChar_P(0, CustomChar_0);
+  MakeChar(0,CustomChar_0);
 #endif
 #ifdef DELAYTIMER
-  MakeChar_P(1, CustomChar_1);
-  MakeChar_P(2, CustomChar_2);
+  MakeChar(1,CustomChar_1);
+  MakeChar(2,CustomChar_2);
 #endif //#ifdef DELAYTIMER
 #if defined(DELAYTIMER)||defined(CHARGE_LIMIT)
-  MakeChar_P(3, CustomChar_3);
+  MakeChar(3,CustomChar_3);
 #endif
   m_Lcd.clear();
 
@@ -406,21 +407,21 @@ void OnboardDisplay::LcdPrint(int x,int y,const char *s)
   m_Lcd.print(s); 
 }
 
-void OnboardDisplay::LcdPrint_P(const char PROGMEM *s)
+void OnboardDisplay::LcdPrint_P(PGM_P s)
 {
   strncpy_P(m_strBuf,s,LCD_MAX_CHARS_PER_LINE);
   m_strBuf[LCD_MAX_CHARS_PER_LINE] = 0;
   m_Lcd.print(m_strBuf);
 }
 
-void OnboardDisplay::LcdPrint_P(int y,const char PROGMEM *s)
+void OnboardDisplay::LcdPrint_P(int y,PGM_P s)
 {
   strncpy_P(m_strBuf,s,LCD_MAX_CHARS_PER_LINE);
   m_strBuf[LCD_MAX_CHARS_PER_LINE] = 0;
   LcdPrint(y,m_strBuf);
 }
 
-void OnboardDisplay::LcdPrint_P(int x,int y,const char PROGMEM *s)
+void OnboardDisplay::LcdPrint_P(int x,int y,PGM_P s)
 {
   strncpy_P(m_strBuf,s,LCD_MAX_CHARS_PER_LINE);
   m_strBuf[LCD_MAX_CHARS_PER_LINE] = 0;
@@ -428,7 +429,7 @@ void OnboardDisplay::LcdPrint_P(int x,int y,const char PROGMEM *s)
   m_Lcd.print(m_strBuf);
 }
 
-void OnboardDisplay::LcdMsg_P(const char PROGMEM *l1,const char PROGMEM *l2)
+void OnboardDisplay::LcdMsg_P(PGM_P l1,PGM_P l2)
 {
   LcdPrint_P(0,l1);
   LcdPrint_P(1,l2);
@@ -462,7 +463,6 @@ void OnboardDisplay::Update(int8_t updmode)
 {
   if (updateDisabled()) return;
 
-  int i;
   uint8_t curstate = g_EvseController.GetState();
   uint8_t svclvl = g_EvseController.GetCurSvcLevel();
   int currentcap = g_EvseController.GetCurrentCapacity();
@@ -707,7 +707,9 @@ void OnboardDisplay::Update(int8_t updmode)
 #endif // AMMETER
 
     if (curstate == EVSE_STATE_C) {
+#ifndef KWH_RECORDING
       time_t elapsedTime = g_EvseController.GetElapsedChargeTime();
+#endif
    
 #ifdef KWH_RECORDING
       uint32_t current = g_EvseController.GetChargingCurrent();
@@ -994,7 +996,7 @@ void SettingsMenu::Next()
   }
 #endif // CHARGE_LIMIT || TIME_LIMIT
 
-  const char PROGMEM *title;
+  PGM_P title;
   if (m_CurIdx < m_menuCnt) {
     title = g_SettingsMenuList[m_CurIdx]->m_Title;
   }
@@ -1039,7 +1041,7 @@ void SetupMenu::Next()
     m_CurIdx = 0;
   }
 
-  const char PROGMEM *title;
+  PGM_P title;
   if (m_CurIdx < m_menuCnt) {
     title = g_SetupMenuList[m_CurIdx]->m_Title;
   }
@@ -2032,7 +2034,7 @@ void BtnHandler::ChkBtn()
     if (m_CurMenu) {
       m_CurMenu = m_CurMenu->Select();
       if (m_CurMenu) {
-	uint8_t curidx;
+	uint8_t curidx = 0;
 	if ((m_CurMenu == &g_SettingsMenu)||(m_CurMenu == &g_SetupMenu)) {
 	  curidx = m_CurMenu->m_CurIdx;
 	}
